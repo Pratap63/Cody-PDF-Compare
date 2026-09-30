@@ -1,0 +1,854 @@
+﻿
+@{
+    ViewData["Title"] = "Medicare EOC - AI PDF Chapter Comparison";
+}
+
+<!-- Bootstrap Icons CDN -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<!-- Markdown Parser CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        --accent-blue: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        --accent-green: linear-gradient(135deg, #059669 0%, #047857 100%);
+        --surface-bg: #f8fafc;
+        --card-border: #e2e8f0;
+        --text-dark: #0f172a;
+        --text-muted: #64748b;
+    }
+
+    body {
+        background-color: #f1f5f9;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--text-dark);
+    }
+
+    /* Hero Banner */
+    .hero-banner {
+        background: var(--primary-gradient);
+        color: #ffffff;
+        padding: 2.75rem 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-banner::after {
+        content: '';
+        position: absolute;
+        top: -40%;
+        right: -8%;
+        width: 320px;
+        height: 320px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, rgba(0,0,0,0) 70%);
+        border-radius: 50%;
+    }
+    .hero-pill {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #93c5fd;
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        padding: 0.35rem 0.9rem;
+        border-radius: 50px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    /* Modern Card Layout */
+    .custom-card {
+        border-radius: 16px;
+        border: 1px solid var(--card-border);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -2px rgba(0,0,0,0.03);
+        background: #ffffff;
+        margin-bottom: 1.75rem;
+        transition: all 0.2s ease;
+    }
+
+    /* Step Titles */
+    .step-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    .step-number {
+        width: 36px;
+        height: 36px;
+        background: var(--accent-blue);
+        color: #ffffff;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-right: 12px;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+    }
+    .step-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin: 0;
+    }
+
+    /* Upload Dropzones */
+    .upload-zone {
+        background: var(--surface-bg);
+        border: 2px dashed #cbd5e1;
+        border-radius: 14px;
+        padding: 1.5rem;
+        transition: all 0.2s ease;
+    }
+    .upload-zone:hover, .upload-zone:focus-within {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+    .upload-label {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #334155;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    /* Primary & Success Actions */
+    .btn-gradient-primary {
+        background: var(--accent-blue);
+        border: none;
+        color: #ffffff;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 0.75rem 1.75rem;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+        transition: all 0.2s ease;
+    }
+    .btn-gradient-primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 16px rgba(37, 99, 235, 0.35);
+        color: #ffffff;
+    }
+
+    .btn-gradient-success {
+        background: var(--accent-green);
+        border: none;
+        color: #ffffff;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 0.85rem 1.75rem;
+        box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+        transition: all 0.2s ease;
+    }
+    .btn-gradient-success:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 16px rgba(5, 150, 105, 0.35);
+        color: #ffffff;
+    }
+
+    /* Loaders */
+    .loader-container {
+        background: var(--surface-bg);
+        border-radius: 12px;
+        border: 1px dashed var(--card-border);
+    }
+
+    /* Status Summary Box */
+    .summary-box {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 14px;
+    }
+    .metric-card {
+        background: #ffffff;
+        border: 1px solid #dcfce7;
+        border-radius: 10px;
+        padding: 0.75rem;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    /* Badges */
+    .badge-v1 {
+        background: #2563eb;
+        color: #ffffff;
+        font-weight: 600;
+    }
+    .badge-v2 {
+        background: #dc2626;
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    /* Accordion & Markdown Styling */
+    .accordion-item {
+        border: 1px solid var(--card-border) !important;
+        border-radius: 12px !important;
+        overflow: hidden;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .accordion-button {
+        padding: 1.2rem 1.5rem;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        background-color: #ffffff;
+    }
+    .accordion-button:not(.collapsed) {
+        background-color: #f1f5f9;
+        color: #2563eb;
+        box-shadow: none;
+    }
+    .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .markdown-body {
+        font-size: 0.98rem;
+        line-height: 1.8;
+        color: #334155;
+    }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
+        color: #0f172a;
+        font-weight: 700;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.35rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .markdown-body ul, .markdown-body ol {
+        padding-left: 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+    .markdown-body li {
+        margin-bottom: 0.35rem;
+    }
+    .markdown-body strong {
+        color: #0f172a;
+        background: #f1f5f9;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+    .markdown-body table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.25rem 0;
+        font-size: 0.92rem;
+    }
+    .markdown-body th {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        padding: 0.6rem 0.9rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .markdown-body td {
+        border: 1px solid #e2e8f0;
+        padding: 0.6rem 0.9rem;
+    }
+    .markdown-body tr:nth-child(even) {
+        background: #f8fafc;
+    }
+</style>
+
+<div class="container py-4">
+
+    <!-- Header / Hero Banner -->
+    <div class="hero-banner text-center text-md-start">
+        <div class="row align-items-center">
+            <div class="col-md-9">
+                <div class="hero-pill mb-2">
+                    <i class="bi bi-cpu-fill"></i> Azure Document Intelligence & Azure OpenAI
+                </div>
+                <h1 class="fw-bold text-white mb-2 mt-1">
+                    <i class="bi bi-file-earmark-diff-fill text-info me-2"></i> PDF Chapter Comparison System
+                </h1>
+                <p class="lead mb-0 text-white-50">
+                    Automated, high-precision differential comparison designed for Medicare Advantage EOC documents.
+                </p>
+            </div>
+            <div class="col-md-3 text-md-end mt-3 mt-md-0 d-none d-md-block">
+                <i class="bi bi-shield-lock-fill display-4 text-white-50"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 1: Upload Form -->
+    <div class="card custom-card p-4">
+        <div class="step-header">
+            <div class="step-number">01</div>
+            <h4 class="step-title">Upload PDF Versions</h4>
+        </div>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="row g-4 mb-4">
+                <!-- PDF Version 1 -->
+                <div class="col-md-6">
+                    <div class="upload-zone">
+                        <label class="upload-label">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger fs-5"></i>
+                            PDF Version 1 (Baseline / 2027)
+                        </label>
+                        <input type="file" id="pdfV1" name="PdfV1" class="form-control mb-3" accept=".pdf" required />
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-muted"><i class="bi bi-tag"></i></span>
+                            <input type="text" id="versionV1" name="VersionV1" class="form-control" placeholder="Version tag (e.g. 2027)" value="2027" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PDF Version 2 -->
+                <div class="col-md-6">
+                    <div class="upload-zone">
+                        <label class="upload-label">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger fs-5"></i>
+                            PDF Version 2 (Updated / 2028)
+                        </label>
+                        <input type="file" id="pdfV2" name="PdfV2" class="form-control mb-3" accept=".pdf" required />
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-muted"><i class="bi bi-tag"></i></span>
+                            <input type="text" id="versionV2" name="VersionV2" class="form-control" placeholder="Version tag (e.g. 2028)" value="2028" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold text-secondary mb-2">
+                    <i class="bi bi-journal-bookmark me-1 text-primary"></i> Document Name
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted"><i class="bi bi-pencil"></i></span>
+                    <input type="text" id="docName" name="DocName" class="form-control form-control-lg fs-6" value="GoldCare Medicare Advantage EOC" />
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" id="btnProcess" class="btn btn-gradient-primary btn-lg">
+                    <i class="bi bi-gear-wide-connected me-2"></i> Start Processing & Extraction
+                </button>
+            </div>
+        </form>
+
+        <!-- Spinner -->
+        <div id="processLoader" class="text-center py-5 d-none loader-container mt-4">
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 2.75rem; height: 2.75rem;"></div>
+            <h5 class="fw-semibold text-dark" id="processLoaderText">Extracting TOC and splitting chapters into SQL Server...</h5>
+            <p class="text-muted small mb-0">Please wait while the PDF structures are analyzed and ingested.</p>
+        </div>
+
+        <!-- Extraction Result Status Badge -->
+        <div id="processSummary" class="summary-box p-4 mt-4 d-none">
+            <h5 class="alert-heading fw-bold text-success d-flex align-items-center mb-3">
+                <i class="bi bi-check-circle-fill fs-4 me-2"></i> Both PDFs Successfully Processed & Stored in DB!
+            </h5>
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="metric-card">
+                        <small class="text-muted d-block fw-semibold mb-1">V1 DB ID</small>
+                        <span id="v1IdBadge" class="badge bg-dark px-3 py-2 rounded-pill fs-6"></span>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="metric-card">
+                        <small class="text-muted d-block fw-semibold mb-1">V2 DB ID</small>
+                        <span id="v2IdBadge" class="badge bg-dark px-3 py-2 rounded-pill fs-6"></span>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="metric-card">
+                        <small class="text-muted d-block fw-semibold mb-1">V1 Chapters</small>
+                        <span id="v1CountBadge" class="badge bg-primary px-3 py-2 rounded-pill fs-6"></span>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="metric-card">
+                        <small class="text-muted d-block fw-semibold mb-1">V2 Chapters</small>
+                        <span id="v2CountBadge" class="badge bg-primary px-3 py-2 rounded-pill fs-6"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Compare Actions -->
+    <div id="comparisonActionsCard" class="card custom-card p-4 d-none">
+        <div class="step-header">
+            <div class="step-number">02</div>
+            <h4 class="step-title">Run AI Comparison</h4>
+        </div>
+
+        <div class="row align-items-center g-3">
+            <div class="col-lg-5">
+                <button id="btnCompareAll" class="btn btn-gradient-success btn-lg w-100">
+                    <i class="bi bi-play-circle-fill me-2"></i> Compare All Chapters at Once
+                </button>
+            </div>
+            <div class="col-lg-1 text-center text-muted fw-bold small">
+                OR
+            </div>
+            <div class="col-lg-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-list-ol text-primary"></i></span>
+                    <select id="chapterSelect" class="form-select form-select-lg fs-6"></select>
+                    <button id="btnCompareSingle" class="btn btn-outline-primary px-4 fw-semibold">
+                        Compare Chapter
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compare Spinner -->
+        <div id="compareLoader" class="text-center py-5 d-none loader-container mt-4">
+            <div class="spinner-grow text-success mb-3" role="status" style="width: 2.75rem; height: 2.75rem;"></div>
+            <h5 class="fw-semibold text-dark" id="compareLoaderText">Generating comparative insights using Azure OpenAI (gpt-chat-latest)...</h5>
+            <p class="text-muted small mb-0">Analyzing textual & structural variations...</p>
+        </div>
+    </div>
+
+    <!-- Step 3: Results Section (Accordion) -->
+    <div id="resultsContainer" class="d-none mt-4">
+        <div class="step-header mb-3">
+            <div class="step-number">03</div>
+            <h3 class="step-title"><i class="bi bi-journal-text me-2 text-primary"></i> Comparison Results</h3>
+        </div>
+        <div class="accordion shadow-sm" id="accordionComparison">
+            <!-- Dynamic comparison cards will be inserted here -->
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript Integration with .NET Controller (UNCHANGED LOGIC & SAFE PROPERTY EXTRACTION) -->
+<script>
+    let globalPdfIdV1 = null;
+    let globalPdfIdV2 = null;
+
+    // 1. Process Form Submit (UPDATED SAFE PROPERTY MAPPING)
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const btn = document.getElementById('btnProcess');
+        const loader = document.getElementById('processLoader');
+        const summary = document.getElementById('processSummary');
+
+        btn.disabled = true;
+        loader.classList.remove('d-none');
+        summary.classList.add('d-none');
+
+        try {
+            const response = await fetch('/Comparison/ProcessPdfs', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            console.log("Backend Response Data:", data); // Debugging for browser console
+
+            if (data.success || data.Success) {
+                // Safe property extraction (snake_case OR camelCase OR PascalCase)
+                globalPdfIdV1 = data.pdfIdV1 || data.pdf_id_v1 || data.PdfIdV1;
+                globalPdfIdV2 = data.pdfIdV2 || data.pdf_id_v2 || data.PdfIdV2;
+
+                const ch1Count = data.chaptersV1Count || data.chapters_v1_count || data.ChaptersV1Count || 0;
+                const ch2Count = data.chaptersV2Count || data.chapters_v2_count || data.ChaptersV2Count || 0;
+
+                // Update UI Badges
+                document.getElementById('v1IdBadge').textContent = globalPdfIdV1 || '-';
+                document.getElementById('v2IdBadge').textContent = globalPdfIdV2 || '-';
+                document.getElementById('v1CountBadge').textContent = ch1Count;
+                document.getElementById('v2CountBadge').textContent = ch2Count;
+
+                // Populate Dropdown
+                const select = document.getElementById('chapterSelect');
+                select.innerHTML = '';
+
+                const maxCh = Math.max(ch1Count, ch2Count);
+
+                if (maxCh > 0) {
+                    for (let i = 1; i <= maxCh; i++) {
+                        const opt = document.createElement('option');
+                        opt.value = i;
+                        opt.textContent = `Chapter ${i}`;
+                        select.appendChild(opt);
+                    }
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = 0;
+                    opt.textContent = 'No Chapters Found';
+                    select.appendChild(opt);
+                }
+
+                summary.classList.remove('d-none');
+                document.getElementById('comparisonActionsCard').classList.remove('d-none');
+            } else {
+                alert('Error: ' + (data.message || data.Message || 'Processing failed.'));
+            }
+        } catch (err) {
+            alert('Failed to process PDFs: ' + err);
+        } finally {
+            btn.disabled = false;
+            loader.classList.add('d-none');
+        }
+    });
+
+    // 2. Compare All Chapters
+    document.getElementById('btnCompareAll').addEventListener('click', async function() {
+        if (!globalPdfIdV1 || !globalPdfIdV2) {
+            alert('Please process PDFs first!');
+            return;
+        }
+
+        const btn = this;
+        const loader = document.getElementById('compareLoader');
+
+        btn.disabled = true;
+        loader.classList.remove('d-none');
+
+        try {
+            const response = await fetch('/Comparison/CompareAll', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pdfIdV1: globalPdfIdV1, pdfIdV2: globalPdfIdV2 })
+            });
+
+            const data = await response.json();
+            console.log("Compare All Response Data:", data); // Browser Console me inspect karne ke liye
+
+            if (data.success || data.Success) {
+                const resultsList = data.results || data.Results || [];
+                renderResults(resultsList);
+            } else {
+                alert('Comparison error: ' + (data.message || data.Message || 'Failed'));
+            }
+        } catch (err) {
+            alert('Error calling comparison API: ' + err);
+        } finally {
+            btn.disabled = false;
+            loader.classList.add('d-none');
+        }
+    });
+
+    // 3. Compare Single Chapter
+    document.getElementById('btnCompareSingle').addEventListener('click', async function() {
+        if (!globalPdfIdV1 || !globalPdfIdV2) {
+            alert('Please process PDFs first!');
+            return;
+        }
+
+        const btn = this;
+        const loader = document.getElementById('compareLoader');
+        const chNum = parseInt(document.getElementById('chapterSelect').value);
+
+        btn.disabled = true;
+        loader.classList.remove('d-none');
+
+        try {
+            const response = await fetch('/Comparison/CompareSingle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pdfIdV1: globalPdfIdV1, pdfIdV2: globalPdfIdV2, chapterNumber: chNum })
+            });
+
+            const resultObj = await response.json();
+            console.log("Compare Single Response Data:", resultObj);
+
+            if (resultObj.success || resultObj.Success) {
+                const singleItem = resultObj.data || resultObj.Data;
+                renderResults([singleItem]);
+            } else {
+                alert('Comparison error: ' + (resultObj.message || resultObj.Message || 'Failed'));
+            }
+        } catch (err) {
+            alert('Error: ' + err);
+        } finally {
+            btn.disabled = false;
+            loader.classList.add('d-none');
+        }
+    });
+
+    // 4. Render Accordion Results (BULLETPROOF PROPERTY EXTRACTION)
+    function renderResults(results) {
+        const container = document.getElementById('accordionComparison');
+        container.innerHTML = '';
+
+        if (!results || results.length === 0) {
+            container.innerHTML =
+                '<div class="alert alert-warning">No comparison results returned.</div>';
+
+            document.getElementById('resultsContainer').classList.remove('d-none');
+            return;
+        }
+
+        results.forEach((item, index) => {
+            if (!item) return;
+
+            // -----------------------------
+            // Chapter Number
+            // -----------------------------
+            const chNum =
+                item.chapterNumber ??
+                item.ChapterNumber ??
+                item.chapter_number ??
+                item.chapter ??
+                item.Chapter ??
+                (index + 1);
+
+            // -----------------------------
+            // Chapter Titles
+            // -----------------------------
+            const v1Title =
+                item.v1Title ||
+                item.V1Title ||
+                item.v1_title ||
+                `Chapter ${chNum}`;
+
+            const v2Title =
+                item.v2Title ||
+                item.V2Title ||
+                item.v2_title ||
+                `Chapter ${chNum}`;
+
+            // -----------------------------
+            // Current backend structure
+            // -----------------------------
+            const summary =
+                item.summary ||
+                item.Summary ||
+                item.summary_markdown ||
+                item.summaryMarkdown ||
+                '';
+
+            const discrepancies =
+                item.discrepancies ||
+                item.Discrepancies ||
+                [];
+
+            // -----------------------------
+            // Accordion IDs
+            // -----------------------------
+            const collapseId = `collapse_${chNum}_${index}`;
+            const headingId = `heading_${chNum}_${index}`;
+            const isFirst = index === 0 ? 'show' : '';
+
+            // -----------------------------
+            // Render Summary
+            // -----------------------------
+            let summaryHtml = '';
+
+            if (summary) {
+
+                if (typeof marked !== 'undefined' && marked.parse) {
+                    summaryHtml = marked.parse(summary);
+                } else {
+                    summaryHtml = summary.replace(/\n/g, '<br/>');
+                }
+
+            } else {
+                summaryHtml = '<p class="text-muted">No summary available.</p>';
+            }
+
+            // -----------------------------
+            // Render Discrepancies
+            // -----------------------------
+            let discrepanciesHtml = '';
+
+            if (discrepancies.length > 0) {
+
+                discrepanciesHtml = `
+                    <div class="mt-4">
+                        <h5 class="mb-3">
+                            <i class="bi bi-exclamation-diamond me-2"></i>
+                            Detected Changes
+                        </h5>
+
+                        <div class="comparison-discrepancies">
+                `;
+
+                discrepancies.forEach((disc, discIndex) => {
+
+                    const topic =
+                        disc.topic ||
+                        disc.Topic ||
+                        `Change ${discIndex + 1}`;
+
+                    const changeType =
+                        disc.change_type ||
+                        disc.changeType ||
+                        disc.ChangeType ||
+                        'modified';
+
+                    const v1Text =
+                        disc.v1_text ||
+                        disc.v1Text ||
+                        '';
+
+                    const v2Text =
+                        disc.v2_text ||
+                        disc.v2Text ||
+                        '';
+
+                    const changeTypeLower = changeType.toLowerCase();
+
+                    let badgeClass = 'bg-warning text-dark';
+
+                    if (changeTypeLower === 'added') {
+                        badgeClass = 'bg-success';
+                    }
+                    else if (changeTypeLower === 'deleted') {
+                        badgeClass = 'bg-danger';
+                    }
+
+                    discrepanciesHtml += `
+                        <div class="card mb-3 border shadow-sm">
+
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+
+                                <strong>
+                                    ${topic}
+                                </strong>
+
+                                <span class="badge ${badgeClass}">
+                                    ${changeType}
+                                </span>
+
+                            </div>
+
+                            <div class="card-body">
+
+                                <div class="row g-3">
+
+                                    <div class="col-md-6">
+
+                                        <div class="small text-muted mb-1">
+                                            VERSION 1
+                                        </div>
+
+                                        <div class="p-3 rounded border bg-light">
+                                            ${v1Text || '<span class="text-muted">No previous text</span>'}
+                                        </div>
+
+                                    </div>
+
+                                    <div class="col-md-6">
+
+                                        <div class="small text-muted mb-1">
+                                            VERSION 2
+                                        </div>
+
+                                        <div class="p-3 rounded border bg-light">
+                                            ${v2Text || '<span class="text-muted">No new text</span>'}
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                    `;
+                });
+
+                discrepanciesHtml += `
+                        </div>
+                    </div>
+                `;
+
+            } else {
+
+                discrepanciesHtml = `
+                    <div class="alert alert-success mt-4">
+                        <i class="bi bi-check-circle me-2"></i>
+                        No discrepancies detected for this chapter.
+                    </div>
+                `;
+            }
+
+            // -----------------------------
+            // Final Accordion Item
+            // -----------------------------
+            const accordionItem = `
+                <div class="accordion-item shadow-sm">
+
+                    <h2 class="accordion-header" id="${headingId}">
+
+                        <button
+                            class="accordion-button ${index > 0 ? 'collapsed' : ''}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#${collapseId}">
+
+                            <span class="badge bg-dark me-3 px-3 py-2 rounded-pill">
+                                Chapter ${chNum}
+                            </span>
+
+                            <span class="text-truncate">
+                                ${v1Title}
+                            </span>
+
+                        </button>
+
+                    </h2>
+
+                    <div
+                        id="${collapseId}"
+                        class="accordion-collapse collapse ${isFirst}"
+                        data-bs-parent="#accordionComparison">
+
+                        <div class="accordion-body bg-white p-4">
+
+                            <!-- Version Headers -->
+                            <div class="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
+
+                                <span class="badge badge-v1 p-2 rounded-pill px-3">
+                                    <i class="bi bi-tag-fill me-1"></i>
+                                    V1: ${v1Title}
+                                </span>
+
+                                <span class="badge badge-v2 p-2 rounded-pill px-3">
+                                    <i class="bi bi-tag-fill me-1"></i>
+                                    V2: ${v2Title}
+                                </span>
+
+                            </div>
+
+                            <!-- Summary -->
+                            <div class="comparison-summary">
+
+                                <h5 class="mb-3">
+                                    <i class="bi bi-file-text me-2"></i>
+                                    Comparison Summary
+                                </h5>
+
+                                <div class="markdown-body">
+                                    ${summaryHtml}
+                                </div>
+
+                            </div>
+
+                            <!-- Discrepancies -->
+                            ${discrepanciesHtml}
+
+                        </div>
+
+                    </div>
+
+                </div>
+            `;
+
+            container.innerHTML += accordionItem;
+        });
+
+        document.getElementById('resultsContainer').classList.remove('d-none');
+    }
+</script>

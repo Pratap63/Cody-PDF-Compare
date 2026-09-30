@@ -1,0 +1,290 @@
+﻿@{
+    ViewData["Title"] = "Comparison History";
+    var errorMessage = ViewBag.ErrorMessage as string;
+    System.Text.Json.JsonElement? historyData = ViewBag.History as System.Text.Json.JsonElement?;
+}
+
+<style>
+    :root {
+        --accent-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        --card-border: #e2e8f0;
+        --surface-bg: #ffffff;
+    }
+
+    .history-wrap {
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 24px 12px 48px;
+    }
+
+    /* Top Navigation Header */
+    .history-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        gap: 1rem;
+    }
+
+    .btn-back {
+        background: #ffffff;
+        color: #334155;
+        border: 1px solid var(--card-border);
+        padding: 0.6rem 1.2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: all 0.2s ease;
+    }
+    .btn-back:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+        transform: translateX(-2px);
+    }
+
+    /* History Card Container */
+    .history-table-card {
+        background: var(--surface-bg);
+        border-radius: 16px;
+        border: 1px solid var(--card-border);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+        overflow: hidden;
+    }
+
+    /* Modern Table */
+    .table-modern {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-modern thead th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--card-border);
+        border-top: none;
+    }
+    .table-modern tbody td {
+        padding: 1.15rem 1.25rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+        font-size: 0.94rem;
+        vertical-align: middle;
+    }
+    .table-modern tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .table-modern tbody tr {
+        transition: background-color 0.15s ease;
+    }
+    .table-modern tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* Badges */
+    .badge-v1-pill {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        font-weight: 600;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.82rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .badge-v2-pill {
+        background-color: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+        font-weight: 600;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.82rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .badge-chapters-count {
+        background-color: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+        font-weight: 600;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.82rem;
+    }
+
+    /* Action Button */
+    .btn-view-results {
+        background: var(--accent-gradient);
+        color: #ffffff !important;
+        border: none;
+        padding: 0.45rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.88rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .btn-view-results:hover {
+        box-shadow: 0 4px 8px rgba(37, 99, 235, 0.35);
+        transform: translateY(-1px);
+    }
+
+    /* Empty & Error State Cards */
+    .state-card {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid var(--card-border);
+        padding: 3rem 2rem;
+        text-align: center;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
+    }
+    .state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: inline-block;
+    }
+</style>
+
+<div class="history-wrap">
+    <!-- Top Header -->
+    <div class="history-header">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">
+                <i class="bi bi-clock-history text-primary me-2"></i>Comparison History
+            </h2>
+            <p class="text-muted mb-0">Browse and inspect previously generated AI chapter comparisons.</p>
+        </div>
+        <a href="/" class="btn-back">
+            <i class="bi bi-arrow-left"></i> Back to Upload
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm border-0 rounded-4 p-4" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-3 text-danger me-3"></i>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Service Connection Error</h5>
+                    <p class="mb-0 text-secondary">@errorMessage</p>
+                </div>
+            </div>
+        </div>
+    }
+    else if (historyData.HasValue && historyData.Value.ValueKind == System.Text.Json.JsonValueKind.Object)
+    {
+        var root = historyData.Value;
+        if (root.TryGetProperty("history", out var sessions) && sessions.ValueKind == System.Text.Json.JsonValueKind.Array && sessions.GetArrayLength() > 0)
+        {
+            <div class="history-table-card">
+                <div class="table-responsive">
+                    <table class="table table-modern align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width: 60px;">#</th>
+                                <th scope="col">Document Name</th>
+                                <th scope="col">Base Version</th>
+                                <th scope="col">Target Version</th>
+                                <th scope="col">Chapters Compared</th>
+                                <th scope="col">Last Analyzed</th>
+                                <th scope="col" class="text-center" style="width: 150px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                int index = 1;
+                            }
+                            @foreach (var item in sessions.EnumerateArray())
+                            {
+                                var v1Id = item.GetProperty("pdf_id_v1").GetInt32();
+                                var v2Id = item.GetProperty("pdf_id_v2").GetInt32();
+                                var v1Name = item.GetProperty("v1_name").GetString();
+                                var v1Ver = item.GetProperty("v1_version").GetString();
+                                var v2Ver = item.GetProperty("v2_version").GetString();
+                                var totalCh = item.GetProperty("total_chapters_compared").GetInt32();
+                                var lastDate = item.GetProperty("last_compared").GetString();
+
+                                <tr>
+                                    <td class="text-muted fw-bold">@index</td>
+                                    <td>
+                                        <div class="fw-bold text-dark">
+                                            <i class="bi bi-file-earmark-diff text-muted me-1"></i> @v1Name
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge-v1-pill">
+                                            <i class="bi bi-tag-fill"></i> @v1Ver
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge-v2-pill">
+                                            <i class="bi bi-tag-fill"></i> @v2Ver
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge-chapters-count">
+                                            <i class="bi bi-layers-fill me-1"></i>@totalCh Chapters
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted d-flex align-items-center gap-1">
+                                            <i class="bi bi-calendar3"></i> @lastDate
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="@Url.Action("HistoryDetail", "Comparison", new { pdfIdV1 = v1Id, pdfIdV2 = v2Id })" class="btn-view-results">
+                                            View Results <i class="bi bi-chevron-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                index++;
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="state-card">
+                <div class="state-icon text-muted">
+                    <i class="bi bi-folder2-open"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-2">No Comparison History Found</h5>
+                <p class="text-muted mb-4">You haven't run any PDF comparisons yet. Upload baseline and updated versions to get started.</p>
+                <a href="/" class="btn btn-primary px-4 py-2 rounded-3 fw-semibold">
+                    <i class="bi bi-cloud-upload me-1"></i> Upload PDFs Now
+                </a>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="state-card">
+            <div class="state-icon text-warning">
+                <i class="bi bi-exclamation-circle"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-2">No History Data Available</h5>
+            <p class="text-muted mb-0">We couldn't retrieve any records from the server at this time.</p>
+        </div>
+    }
+</div>

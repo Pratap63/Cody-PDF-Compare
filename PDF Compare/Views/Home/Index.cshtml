@@ -1,0 +1,195 @@
+﻿@{
+    ViewData["Title"] = "Home - AI PDF Compare Portal";
+}
+
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        --accent-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        --accent-green: linear-gradient(135deg, #059669 0%, #047857 100%);
+        --card-border: #e2e8f0;
+        --text-dark: #0f172a;
+        --text-muted: #64748b;
+    }
+
+    .hero-section {
+        padding: 5rem 1rem 4rem;
+        background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.08) 0%, rgba(255, 255, 255, 0) 50%);
+        position: relative;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 24px;
+        padding: 3.5rem 2rem;
+        box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.05);
+        max-width: 850px;
+        margin: 0 auto;
+    }
+
+    .app-title {
+        font-size: 3rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        background: linear-gradient(135deg, #0f172a 30%, #2563eb 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1.5rem;
+    }
+
+    .lead-text {
+        color: var(--text-muted);
+        font-size: 1.15rem;
+        max-width: 600px;
+        margin: 0 auto 2.5rem;
+        line-height: 1.6;
+    }
+
+    /* Core Launch CTA Button */
+    .btn-launch {
+        background: var(--accent-gradient);
+        color: #ffffff !important;
+        font-weight: 700;
+        font-size: 1.1rem;
+        padding: 1rem 2.5rem;
+        border-radius: 14px;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4), 0 8px 10px -6px rgba(37, 99, 235, 0.4);
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        text-decoration: none;
+    }
+    .btn-launch:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 35px -5px rgba(37, 99, 235, 0.5), 0 12px 15px -6px rgba(37, 99, 235, 0.5);
+        opacity: 0.95;
+    }
+    .btn-launch:active {
+        transform: translateY(0);
+    }
+
+    /* Features Grid */
+    .features-grid {
+        max-width: 1100px;
+        margin: 3rem auto 0;
+    }
+
+    .feature-card {
+        background: #ffffff;
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+        height: 100%;
+        transition: all 0.2s ease;
+        text-align: center;
+    }
+    .feature-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 20px -5px rgba(15, 23, 42, 0.05);
+        border-color: #cbd5e1;
+    }
+
+    .feature-icon-wrapper {
+        width: 50px;
+        height: 50px;
+        background: #eff6ff;
+        color: #2563eb;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .feature-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .feature-desc {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-bottom: 0;
+    }
+</style>
+
+<div class="hero-section">
+    <!-- Center Hero Card -->
+    <div class="glass-card text-center">
+        <div class="d-inline-flex align-items-center gap-2 mb-3 px-3 py-1 bg-light border rounded-pill text-secondary small fw-semibold">
+            <span class="d-inline-block bg-success rounded-circle" style="width: 8px; height: 8px; animation: pulse 1.5s infinite;"></span>
+            Enterprise Document Intelligence Portal Active
+        </div>
+        
+        <h1 class="app-title">PDF Document Compare</h1>
+        <p class="lead-text">
+            Analyze and track structural variations, chapter differentials, and regulatory textual updates with automated AI-assisted verification.
+        </p>
+
+        <!-- Dynamic MVC Routing to Comparison Index -->
+        <a asp-controller="Comparison" asp-action="Index" class="btn-launch">
+            <span>Launch PDF Workspace</span>
+            <i class="bi bi-arrow-right-short fs-4"></i>
+        </a>
+    </div>
+
+    <!-- Feature Highlights -->
+    <div class="features-grid">
+        <div class="row g-4 justify-content-center">
+            <!-- Feature 1 -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <i class="bi bi-file-earmark-diff-fill"></i>
+                    </div>
+                    <h5 class="feature-title">Differential Analysis</h5>
+                    <p class="feature-desc">Compare complex Multi-Version EOC chapters dynamically to extract literal differences.</p>
+                </div>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper" style="background:#f0fdf4; color:#16a34a;">
+                        <i class="bi bi-cpu-fill"></i>
+                    </div>
+                    <h5 class="feature-title">AI Processing</h5>
+                    <p class="feature-desc">Utilizes Azure Document Intelligence combined with Azure OpenAI endpoints for deep text understanding.</p>
+                </div>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper" style="background:#faf5ff; color:#9333ea;">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <h5 class="feature-title">Historical Logging</h5>
+                    <p class="feature-desc">Review previous batch executions instantly through locally queried SQL Server logs.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Simple pulse keyframe injection
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @@keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        }
+    `;
+    document.head.appendChild(style);
+</script>

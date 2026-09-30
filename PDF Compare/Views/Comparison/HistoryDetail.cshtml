@@ -1,0 +1,1756 @@
+﻿@{
+    // Layout = _Layout.cshtml; // Full standalone page (no _Layout.cshtml chrome)
+    ViewData["Title"] = "High-Precision Comparative Workspace";
+
+    // Server-side config (optional: pass from Controller via ViewBag)
+    var pythonApiBase = ViewBag.PythonApiBase as string ?? "http://localhost:8000";
+    var netStreamBase = ViewBag.NetStreamBase as string ?? "https://localhost:7215";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <style>
+            :root {
+                --primary: #2563eb;
+                --primary-hover: #1d4ed8;
+                --primary-light: #eff6ff;
+                --border: #e2e8f0;
+                --bg-page: #f8fafc;
+                --muted: #64748b;
+                --text-main: #0f172a;
+                --del-bg: #fef2f2;
+                --del-text: #991b1b;
+                --del-highlight: rgba(239, 68, 68, 0.35);
+                --add-bg: #f0fdf4;
+                --add-text: #166534;
+                --add-highlight: rgba(34, 197, 94, 0.35);
+                --mod-bg: #eff6ff;
+                --mod-text: #1e40af;
+                --mod-border: #bfdbfe;
+            }
+
+            * {
+                box-sizing: border-box;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+
+            body {
+                margin: 0;
+                background: var(--bg-page);
+                font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                color: var(--text-main);
+            }
+
+            /* Custom Sleek Scrollbars */
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            ::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 10px;
+            }
+
+                ::-webkit-scrollbar-thumb:hover {
+                    background: #94a3b8;
+                }
+
+            .page-wrap {
+                max-width: 1750px;
+                margin: auto;
+                padding: 20px 24px;
+            }
+
+            .top-bar {
+                background: white;
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 16px 24px;
+                margin-bottom: 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02);
+            }
+
+            .top-bar-left {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .title {
+                margin: 0;
+                font-size: 22px;
+                font-weight: 700;
+                color: var(--text-main);
+                letter-spacing: -0.01em;
+            }
+
+            .badges-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-size: 13px;
+                flex-wrap: wrap;
+            }
+
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                padding: 5px 12px;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.01em;
+            }
+
+            .badge-base {
+                background: #f1f5f9;
+                color: #475569;
+                border: 1px solid #cbd5e1;
+            }
+
+            .badge-target {
+                background: #dbeafe;
+                color: #1d4ed8;
+                border: 1px solid #bfdbfe;
+            }
+
+            .meta-text {
+                color: var(--muted);
+                font-size: 13px;
+                font-weight: 500;
+            }
+
+            .gateway-indicator {
+                font-size: 12px;
+                background: #f0fdf4;
+                color: #166534;
+                border: 1px solid #bbf7d0;
+                padding: 5px 12px;
+                border-radius: 8px;
+                font-weight: 600;
+            }
+
+            .session-selector {
+                background: #f8fafc;
+                border: 1px solid #cbd5e1;
+                padding: 8px 14px;
+                border-radius: 8px;
+                font-size: 13.5px;
+                font-weight: 600;
+                color: #334155;
+                outline: none;
+                cursor: pointer;
+                max-width: 280px;
+                transition: all 0.2s ease;
+            }
+
+                .session-selector:hover {
+                    border-color: var(--primary);
+                    background: white;
+                    box-shadow: 0 0 0 3px var(--primary-light);
+                }
+
+            .main-layout {
+                display: grid;
+                grid-template-columns: minmax(0, 2.2fr) minmax(400px, 1fr);
+                gap: 20px;
+            }
+
+            .viewer-container {
+                background: white;
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 10px 15px -3px rgba(0,0,0,0.02);
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - 130px);
+            }
+
+            .toolbar {
+                height: 56px;
+                padding: 0 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid var(--border);
+                background: #ffffff;
+                font-size: 13.5px;
+            }
+
+            .toolbar-group {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .btn {
+                background: white;
+                border: 1px solid var(--border);
+                padding: 8px 14px;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                transition: all 0.15s ease;
+                color: #334155;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            }
+
+                .btn:hover:not(:disabled) {
+                    background: #f8fafc;
+                    border-color: #cbd5e1;
+                }
+
+                .btn:active:not(:disabled) {
+                    transform: scale(0.96);
+                }
+
+                .btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    box-shadow: none;
+                }
+
+            .btn-primary {
+                background: var(--primary);
+                color: white;
+                border-color: var(--primary);
+                box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+            }
+
+                .btn-primary:hover:not(:disabled) {
+                    background: var(--primary-hover);
+                    border-color: var(--primary-hover);
+                }
+
+            .pdf-split {
+                display: flex;
+                flex: 1;
+                background: #334155;
+                overflow: hidden;
+            }
+
+            .pdf-pane {
+                width: 50%;
+                overflow-y: auto;
+                position: relative;
+            }
+
+                .pdf-pane:first-child {
+                    border-right: 1px solid #1e293b;
+                }
+
+            .pdf-header {
+                position: sticky;
+                top: 0;
+                z-index: 30;
+                padding: 10px 12px;
+                text-align: center;
+                font-size: 11.5px;
+                font-weight: 700;
+                color: white;
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+                backdrop-filter: blur(4px);
+            }
+
+            .v1-header {
+                background: rgba(51, 65, 85, 0.95);
+            }
+
+            .v2-header {
+                background: rgba(30, 64, 175, 0.95);
+            }
+
+            .pdf-render-area {
+                padding: 32px 24px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 24px;
+            }
+
+            .pdf-page {
+                position: relative;
+                background: white;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                border-radius: 4px;
+            }
+
+                .pdf-page canvas {
+                    display: block;
+                    border-radius: 4px;
+                }
+
+            .pdf-highlight {
+                position: absolute;
+                border-radius: 4px;
+                pointer-events: none;
+                z-index: 20;
+                box-sizing: border-box;
+                mix-blend-mode: multiply;
+            }
+
+            .hl-v1 {
+                background: var(--del-highlight);
+                border: 2px solid #ef4444;
+            }
+
+            .hl-v2 {
+                background: var(--add-highlight);
+                border: 2px solid #22c55e;
+            }
+
+            @@keyframes hlPulse {
+                0%, 100% {
+                    opacity: 0.85;
+                }
+
+                50% {
+                    opacity: 1;
+                    box-shadow: 0 0 16px rgba(250, 204, 21, 0.8);
+                }
+            }
+
+            .pdf-highlight.glow {
+                animation: hlPulse 1.5s infinite ease-in-out;
+                z-index: 25;
+            }
+
+            .changes-panel {
+                height: calc(100vh - 130px);
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 10px 15px -3px rgba(0,0,0,0.02);
+            }
+
+            .changes-header {
+                padding: 20px 24px 16px;
+                border-bottom: 1px solid var(--border);
+                background: #ffffff;
+            }
+
+            .changes-header-top {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+
+            .changes-header h3 {
+                margin: 0;
+                font-size: 17px;
+                font-weight: 700;
+                color: #0f172a;
+            }
+
+            .summary-chips {
+                display: flex;
+                gap: 8px;
+                font-size: 11.5px;
+                font-weight: 600;
+            }
+
+            .summary-chip {
+                padding: 4px 12px;
+                border-radius: 20px;
+                border: 1px solid transparent;
+            }
+
+                .summary-chip.mod {
+                    background: var(--mod-bg);
+                    color: var(--mod-text);
+                    border-color: var(--mod-border);
+                }
+
+                .summary-chip.add {
+                    background: var(--add-bg);
+                    color: var(--add-text);
+                    border-color: #bbf7d0;
+                }
+
+                .summary-chip.del {
+                    background: var(--del-bg);
+                    color: var(--del-text);
+                    border-color: #fecaca;
+                }
+
+            .filter-tabs {
+                display: flex;
+                gap: 6px;
+                background: #f1f5f9;
+                padding: 6px;
+                border-radius: 10px;
+            }
+
+            .filter-tab {
+                flex: 1;
+                border: none;
+                background: transparent;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 8px 6px;
+                border-radius: 8px;
+                cursor: pointer;
+                color: #64748b;
+                transition: all 0.2s ease;
+            }
+
+                .filter-tab:hover:not(.active) {
+                    color: #334155;
+                    background: #e2e8f0;
+                }
+
+                .filter-tab.active {
+                    background: white;
+                    color: var(--primary);
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+
+            .changes-list {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px 20px;
+                background: #f8fafc;
+            }
+
+            .chapter-group {
+                margin-bottom: 20px;
+            }
+
+            .chapter-label {
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: #64748b;
+                padding: 8px 0;
+                margin-bottom: 8px;
+            }
+
+            .change-card {
+                border: 1px solid var(--border);
+                background: white;
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 12px;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+            }
+
+                .change-card::before {
+                    content: "";
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    bottom: 0;
+                    width: 4px;
+                    border-radius: 12px 0 0 12px;
+                }
+
+                .change-card.type-REPLACED::before {
+                    background: #60a5fa;
+                }
+
+                .change-card.type-INSERTED::before {
+                    background: #4ade80;
+                }
+
+                .change-card.type-DELETED::before {
+                    background: #f87171;
+                }
+
+                .change-card:hover {
+                    border-color: #cbd5e1;
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 12px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03);
+                }
+
+                .change-card.active {
+                    border-color: var(--primary);
+                    background: var(--primary-light);
+                    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+                    transform: translateY(0);
+                }
+
+            .change-top {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+
+            .change-number {
+                font-size: 12px;
+                font-weight: 700;
+                color: #475569;
+                background: #f1f5f9;
+                padding: 2px 8px;
+                border-radius: 12px;
+            }
+
+            .type-pill {
+                padding: 4px 10px;
+                border-radius: 6px;
+                text-transform: uppercase;
+                font-size: 10.5px;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+            }
+
+            .type-REPLACED {
+                background: var(--mod-bg);
+                color: var(--mod-text);
+                border: 1px solid var(--mod-border);
+            }
+
+            .type-INSERTED {
+                background: var(--add-bg);
+                color: var(--add-text);
+                border: 1px solid #bbf7d0;
+            }
+
+            .type-DELETED {
+                background: var(--del-bg);
+                color: var(--del-text);
+                border: 1px solid #fecaca;
+            }
+
+            .change-topic {
+                font-size: 14.5px;
+                font-weight: 600;
+                color: #0f172a;
+                margin-bottom: 12px;
+            }
+
+            .diff-box {
+                font-size: 13px;
+                line-height: 1.5;
+                font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+                background: #f8fafc;
+                padding: 6px;
+                border-radius: 8px;
+            }
+
+            .diff-old, .diff-new {
+                padding: 8px 12px;
+                border-radius: 6px;
+                word-break: break-word;
+            }
+
+            .diff-old {
+                background: var(--del-bg);
+                color: var(--del-text);
+                border-left: 3px solid #ef4444;
+                margin-bottom: 6px;
+                text-decoration: line-through;
+                opacity: 0.9;
+            }
+
+            .diff-new {
+                background: var(--add-bg);
+                color: var(--add-text);
+                border-left: 3px solid #22c55e;
+            }
+
+            .changes-footer {
+                padding: 16px 24px;
+                border-top: 1px solid var(--border);
+                background: white;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 13px;
+                font-weight: 600;
+                color: #475569;
+            }
+
+            .nav-buttons {
+                display: flex;
+                gap: 10px;
+            }
+
+            .progress-bar {
+                height: 5px;
+                background: #e2e8f0;
+                border-radius: 5px;
+                margin-top: 10px;
+                overflow: hidden;
+                width: 140px;
+            }
+
+            .progress-fill {
+                height: 100%;
+                background: var(--primary);
+                border-radius: 5px;
+                transition: width 0.3s ease;
+            }
+
+            .loading {
+                color: #64748b;
+                text-align: center;
+                padding: 80px 20px;
+                font-size: 15px;
+                font-weight: 500;
+            }
+
+            .loading-spinner {
+                border: 3px solid #e2e8f0;
+                border-top: 3px solid var(--primary);
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+                margin: 0 auto 16px;
+            }
+
+            @@keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .error-message {
+                background: #fee2e2;
+                border: 1px solid #fca5a5;
+                color: #991b1b;
+                padding: 14px 20px;
+                border-radius: 10px;
+                margin-bottom: 16px;
+                font-size: 14px;
+                line-height: 1.5;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            }
+
+            .error-box {
+                color: #fecaca;
+                background: rgba(127,29,29,0.7);
+                border: 1px solid #f87171;
+                border-radius: 12px;
+                padding: 24px;
+                max-width: 480px;
+                margin: 60px auto;
+                text-align: left;
+                font-size: 14px;
+                line-height: 1.6;
+                backdrop-filter: blur(8px);
+            }
+
+                .error-box code {
+                    font-family: monospace;
+                    font-size: 12.5px;
+                    background: rgba(0,0,0,0.25);
+                    padding: 3px 8px;
+                    border-radius: 6px;
+                    word-break: break-all;
+                }
+
+            /* --- Enhanced JSON Modal --- */
+            .json-modal {
+                display: none;
+                position: fixed;
+                z-index: 9999;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(15, 23, 42, 0.5);
+                backdrop-filter: blur(6px);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+                .json-modal.show {
+                    display: block;
+                    opacity: 1;
+                }
+
+            .json-modal-content {
+                background-color: #ffffff;
+                margin: 5vh auto;
+                padding: 0;
+                border-radius: 16px;
+                width: 90%;
+                max-width: 900px;
+                max-height: 85vh;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                transform: translateY(20px) scale(0.98);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .json-modal.show .json-modal-content {
+                transform: translateY(0) scale(1);
+            }
+
+            .json-modal-header {
+                padding: 20px 28px;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: white;
+                border-radius: 16px 16px 0 0;
+            }
+
+                .json-modal-header h3 {
+                    margin: 0;
+                    color: #0f172a;
+                    font-size: 18px;
+                    font-weight: 700;
+                }
+
+                .json-modal-header button {
+                    background: #f1f5f9;
+                    border: none;
+                    font-size: 22px;
+                    line-height: 1;
+                    height: 36px;
+                    width: 36px;
+                    border-radius: 50%;
+                    color: #64748b;
+                    cursor: pointer;
+                    transition: 0.2s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                    .json-modal-header button:hover {
+                        background: #e2e8f0;
+                        color: #0f172a;
+                        transform: rotate(90deg);
+                    }
+
+            .json-modal-body {
+                padding: 24px 28px;
+                overflow-y: auto;
+                background: #f8fafc;
+                border-radius: 0 0 16px 16px;
+            }
+
+                .json-modal-body pre {
+                    background: #1e293b;
+                    color: #f8fafc;
+                    padding: 24px;
+                    border-radius: 12px;
+                    font-family: "JetBrains Mono", Consolas, monospace;
+                    font-size: 13.5px;
+                    line-height: 1.6;
+                    overflow-x: auto;
+                    margin: 0;
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+                }
+
+            @@media (max-width: 1150px) {
+                .main-layout {
+                    grid-template-columns: 1fr;
+                }
+
+                .viewer-container, .changes-panel {
+                    height: 55vh;
+                }
+            }
+    </style>
+</head>
+<body>
+    <div class="page-wrap">
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div style="display:flex; align-items:center; gap: 16px;">
+                    <h1 class="title" id="documentName">Comparative Workspace</h1>
+                    <button type="button"
+                            class="btn"
+                            style="border-color: var(--primary); color: var(--primary); background: transparent;"
+                            onclick="showAllJsonResponses()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Show All Responses in JSON
+                    </button>
+                </div>
+                <div class="badges-row">
+                    <span class="badge badge-base" id="baseVersion">Baseline</span>
+                    <span style="color:var(--muted)">→</span>
+                    <span class="badge badge-target" id="targetVersion">Target</span>
+                    <span class="meta-text" id="chapterCount">Scanning Database...</span>
+                    <span class="gateway-indicator">.NET Blob + Canvas Renderer</span>
+                </div>
+            </div>
+            <div class="toolbar-group">
+                <button type="button" class="btn btn-primary" id="compareAllBtn">Run AI Comparison</button>
+                <select class="session-selector" id="sessionDropdown">
+                    <option value="">-- Switch Session --</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="errorWrapper"></div>
+
+        <div class="main-layout">
+            <div class="viewer-container">
+                <div class="toolbar">
+                    <div class="toolbar-group">
+                        <strong style="color:#0f172a;">📄 PDF Canvas Viewer</strong>
+                        <label style="cursor:pointer; font-size:13px; font-weight:500; display:flex; align-items:center; gap:6px; color:#334155;">
+                            <input type="checkbox" id="syncScroll" checked style="accent-color:var(--primary); width:16px; height:16px;" /> Sync Scroll
+                        </label>
+                    </div>
+                    <div class="toolbar-group">
+                        <button type="button" class="btn" id="zoomOutBtn">−</button>
+                        <span id="zoomLabel" style="min-width:44px; text-align:center; font-weight:600; color:#334155;">100%</span>
+                        <button type="button" class="btn" id="zoomInBtn">+</button>
+                        <button type="button" class="btn" id="zoomResetBtn">Reset</button>
+                    </div>
+                </div>
+                <div class="pdf-split">
+                    <div class="pdf-pane" id="pdfPaneV1">
+                        <div class="pdf-header v1-header" id="v1Header">Baseline Version</div>
+                        <div class="pdf-render-area" id="renderContainerV1">
+                            <div class="loading"><div class="loading-spinner"></div>Loading baseline PDF...</div>
+                        </div>
+                    </div>
+                    <div class="pdf-pane" id="pdfPaneV2">
+                        <div class="pdf-header v2-header" id="v2Header">Target Version</div>
+                        <div class="pdf-render-area" id="renderContainerV2">
+                            <div class="loading"><div class="loading-spinner"></div>Loading target PDF...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="changes-panel">
+                <div class="changes-header">
+                    <div class="changes-header-top">
+                        <h3>📋 Discrepancy Registry</h3>
+                        <div class="summary-chips" id="summaryChips"></div>
+                    </div>
+                    <div class="filter-tabs">
+                        <button type="button" class="filter-tab active" data-filter="ALL">All</button>
+                        <button type="button" class="filter-tab" data-filter="REPLACED">Modified</button>
+                        <button type="button" class="filter-tab" data-filter="INSERTED">Added</button>
+                        <button type="button" class="filter-tab" data-filter="DELETED">Removed</button>
+                    </div>
+                </div>
+                <div class="changes-list" id="changesList">
+                    <div class="loading">Loading comparative data...</div>
+                </div>
+                <div class="changes-footer">
+                    <div>
+                        <span id="footerCount">0 of 0</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+                        </div>
+                    </div>
+                    <div class="nav-buttons">
+                        <button type="button" class="btn" id="prevBtn" disabled>↑ Prev</button>
+                        <button type="button" class="btn" id="nextBtn" disabled>Next ↓</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced JSON Modal -->
+    <div id="jsonModal" class="json-modal">
+        <div class="json-modal-content">
+            <div class="json-modal-header">
+                <h3>LLM Response JSON</h3>
+                <button onclick="closeJsonModal()">×</button>
+            </div>
+            <div class="json-modal-body">
+                <pre id="jsonViewer"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+            // JS Function added to allow closing the JSON modal (UI function only, no value changes)
+            function closeJsonModal() {
+                const modal = document.getElementById("jsonModal");
+                modal.classList.remove("show");
+                setTimeout(() => { modal.style.display = "none"; }, 300);
+            }
+
+            // Original showJsonResponse modification just to handle class addition smoothly
+            const originalShowJsonResponse = window.showJsonResponse;
+            window.showJsonResponse = async function (pdfIdV1, pdfIdV2, chapterNumber) {
+                const response = await fetch(`/Comparison/GetComparisonJson?pdfIdV1=${pdfIdV1}&pdfIdV2=${pdfIdV2}&chapterNumber=${chapterNumber}`);
+                if (!response.ok) { alert("JSON response not found."); return; }
+                const json = await response.json();
+                document.getElementById("jsonViewer").textContent = JSON.stringify(json, null, 2);
+
+                const modal = document.getElementById("jsonModal");
+                modal.style.display = "block";
+                setTimeout(() => { modal.classList.add("show"); }, 10);
+            };
+    </script>
+
+    <script>
+            // Razor-injected config (safe)
+            window.APP_CONFIG = {
+                apiBaseUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(pythonApiBase)),
+                netStreamUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(netStreamBase))
+                                    };
+    </script>
+
+    <!-- THE REST OF YOUR ORIGINAL JAVASCRIPT REMAINS 100% UNTOUCHED -->
+    <script>
+            pdfjsLib.GlobalWorkerOptions.workerSrc =
+                "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+            const API_BASE_URL = window.APP_CONFIG.apiBaseUrl || "http://localhost:8000";
+            const NET_STREAM_URL = window.APP_CONFIG.netStreamUrl || "https://localhost:7215";
+
+            let activeSession = { v1: null, v2: null };
+            const urlParams = new URLSearchParams(window.location.search);
+
+            const pagePdfIdV1 = urlParams.get("pdfIdV1");
+            const pagePdfIdV2 = urlParams.get("pdfIdV2");
+
+            console.log("PDF IDs from URL:", {
+                pdfIdV1: pagePdfIdV1,
+                pdfIdV2: pagePdfIdV2
+            });
+
+            let currentScale = 0.70;
+            let allChanges = [];
+            let filteredChanges = [];
+            let activeIndex = -1;
+            let isProgrammaticScroll = false;
+
+            const pdfState = {
+                v1: { pdf: null, pages: [], url: "" },
+                v2: { pdf: null, pages: [], url: "" }
+            };
+
+            document.addEventListener("DOMContentLoaded", async () => {
+                setupSyncScroll();
+                setupKeyboardNav();
+                setupZoomControls();
+                setupFilters();
+                setupNavButtons();
+                setupCompareButton();
+                await loadComparisonSessions();
+            });
+
+            async function loadComparisonSessions() {
+                try {
+
+                    // ==========================================
+                    // 1. Read session IDs from current page URL
+                    // ==========================================
+                    const urlParams =
+                        new URLSearchParams(window.location.search);
+
+                    const pagePdfIdV1 =
+                        urlParams.get("pdfIdV1");
+
+                    const pagePdfIdV2 =
+                        urlParams.get("pdfIdV2");
+
+                    console.log("PDF IDs from URL:", {
+                        pdfIdV1: pagePdfIdV1,
+                        pdfIdV2: pagePdfIdV2
+                    });
+
+
+                    // ==========================================
+                    // 2. Load comparison history from .NET
+                    // ==========================================
+                    const res =
+                        await fetch("/Comparison/GetHistory");
+
+                    if (!res.ok) {
+                        throw new Error(
+                            `History request failed: ${res.status}`
+                        );
+                    }
+
+                    const data =
+                        await res.json();
+
+                    if (
+                        !data.success ||
+                        !data.history ||
+                        !data.history.length
+                    ) {
+                        showErrorMessage(
+                            "No comparisons found."
+                        );
+                        return;
+                    }
+
+
+                    // ==========================================
+                    // 3. Populate history dropdown
+                    // ==========================================
+                    const dropdown =
+                        document.getElementById("sessionDropdown");
+
+                    dropdown.innerHTML = "";
+
+                    data.history.forEach((session, i) => {
+
+                        const opt =
+                            document.createElement("option");
+
+                        opt.value =
+                            `${session.pdf_id_v1}_${session.pdf_id_v2}`;
+
+                        opt.textContent =
+                            `${session.v1_name} vs ${session.v2_name} (${session.total_chapters_compared} Ch)`;
+
+                        dropdown.appendChild(opt);
+                    });
+
+
+                    // ==========================================
+                    // 4. Decide which session should be loaded
+                    // ==========================================
+                    let selectedV1;
+                    let selectedV2;
+
+                    // ------------------------------------------
+                    // Case A:
+                    // User came from History page "View Results"
+                    // ------------------------------------------
+                    if (pagePdfIdV1 && pagePdfIdV2) {
+
+                        selectedV1 =
+                            parseInt(pagePdfIdV1, 10);
+
+                        selectedV2 =
+                            parseInt(pagePdfIdV2, 10);
+
+                        console.log(
+                            "Using session from URL:",
+                            {
+                                v1: selectedV1,
+                                v2: selectedV2
+                            }
+                        );
+
+                    }
+
+                    // ------------------------------------------
+                    // Case B:
+                    // No IDs in URL
+                    // Use latest/first history session
+                    // ------------------------------------------
+                    else {
+
+                        selectedV1 =
+                            data.history[0].pdf_id_v1;
+
+                        selectedV2 =
+                            data.history[0].pdf_id_v2;
+
+                        console.log(
+                            "No session IDs in URL. Using latest history session:",
+                            {
+                                v1: selectedV1,
+                                v2: selectedV2
+                            }
+                        );
+                    }
+
+
+                    // ==========================================
+                    // 5. Validate selected IDs
+                    // ==========================================
+                    if (
+                        Number.isNaN(selectedV1) ||
+                        Number.isNaN(selectedV2)
+                    ) {
+                        throw new Error(
+                            "Invalid PDF session IDs."
+                        );
+                    }
+
+
+                    // ==========================================
+                    // 6. Set active session
+                    // ==========================================
+                    activeSession.v1 =
+                        selectedV1;
+
+                    activeSession.v2 =
+                        selectedV2;
+
+
+                    // ==========================================
+                    // 7. Select same session in dropdown
+                    // ==========================================
+                    dropdown.value =
+                        `${activeSession.v1}_${activeSession.v2}`;
+
+
+                    // ==========================================
+                    // 8. Handle manual dropdown switching
+                    // ==========================================
+                    dropdown.onchange = (e) => {
+
+                        if (!e.target.value) {
+                            return;
+                        }
+
+                        const [v1, v2] =
+                            e.target.value.split("_");
+
+                        console.log(
+                            "Switching session:",
+                            {
+                                v1,
+                                v2
+                            }
+                        );
+
+                        triggerSessionSwitch(
+                            v1,
+                            v2
+                        );
+                    };
+
+
+                    // ==========================================
+                    // 9. Load selected session
+                    // ==========================================
+                    console.log(
+                        "Loading selected session:",
+                        {
+                            v1: activeSession.v1,
+                            v2: activeSession.v2
+                        }
+                    );
+
+                    await executeSessionLifecycle(
+                        activeSession.v1,
+                        activeSession.v2
+                    );
+
+                }
+                catch (e) {
+
+                    console.error(
+                        "History loading error:",
+                        e
+                    );
+
+                    showErrorMessage(
+                        "Unable to load comparison history."
+                    );
+                }
+            }
+
+            async function triggerSessionSwitch(v1, v2) {
+                activeSession.v1 = v1;
+                activeSession.v2 = v2;
+                document.getElementById("renderContainerV1").innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading baseline...</div>';
+                document.getElementById("renderContainerV2").innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading target...</div>';
+                document.getElementById("changesList").innerHTML = '<div class="loading">Loading discrepancies...</div>';
+                await executeSessionLifecycle(v1, v2);
+            }
+
+            async function showAllJsonResponses() {
+
+                if (!activeSession.v1 || !activeSession.v2) {
+                    alert("No active comparison session found.");
+                    return;
+                }
+
+                const url =
+                    `/Comparison/GetAllComparisonJson?pdfIdV1=${activeSession.v1}&pdfIdV2=${activeSession.v2}`;
+
+                console.log("Fetching JSON:", url);
+                console.log("V1:", activeSession.v1);
+                console.log("V2:", activeSession.v2);
+
+                try {
+
+                    const response = await fetch(url);
+
+                    console.log("HTTP Status:", response.status);
+                    console.log("HTTP Status Text:", response.statusText);
+
+                    const responseText = await response.text();
+
+                    console.log("Response:", responseText);
+
+                    if (!response.ok) {
+                        alert(
+                            `Failed to load comparison JSON.\n\n` +
+                            `Status: ${response.status}\n` +
+                            `Message: ${responseText}`
+                        );
+
+                        return;
+                    }
+
+                    const json = JSON.parse(responseText);
+
+                    document.getElementById("jsonViewer").textContent =
+                        JSON.stringify(json, null, 2);
+
+                    const modal = document.getElementById("jsonModal");
+                    modal.style.display = "block";
+                    setTimeout(() => { modal.classList.add("show"); }, 10);
+
+                } catch (error) {
+
+                    console.error("JSON loading error:", error);
+                    alert("Failed to load comparison JSON: " + error.message);
+                }
+            }
+
+            async function executeSessionLifecycle(v1, v2) {
+                await loadSessionMetadata(v1, v2);
+
+                // .NET blob stream endpoints
+                pdfState.v1.url = `${NET_STREAM_URL}/Comparison/GetPdfStream/${v1}?isVersion2=false`;
+                pdfState.v2.url = `${NET_STREAM_URL}/Comparison/GetPdfStream/${v2}?isVersion2=true`;
+
+                await Promise.all([
+                    loadPdf("v1", "renderContainerV1"),
+                    loadPdf("v2", "renderContainerV2")
+                ]);
+
+                if (filteredChanges.length > 0) setTimeout(() => selectChange(0), 500);
+            }
+
+            function setupCompareButton() {
+                document.getElementById("compareAllBtn").onclick = async () => {
+                    if (!activeSession.v1 || !activeSession.v2) return;
+                    const btn = document.getElementById("compareAllBtn");
+                    const old = btn.textContent;
+                    try {
+                        btn.disabled = true;
+                        btn.textContent = "Processing AI...";
+                        document.getElementById("changesList").innerHTML = '<div class="loading"><div class="loading-spinner"></div>AI comparing all chapters...</div>';
+                        const res = await fetch(`${API_BASE_URL}/api/pdf/compare-all`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                pdf_id_v1: parseInt(activeSession.v1),
+                                pdf_id_v2: parseInt(activeSession.v2)
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) await executeSessionLifecycle(activeSession.v1, activeSession.v2);
+                        else showErrorMessage(data.detail || "AI comparison failed");
+                    } catch (err) {
+                        showErrorMessage("AI comparison request failed: " + err.message);
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = old;
+                    }
+                };
+            }
+
+            async function loadSessionMetadata(v1, v2) {
+
+                try {
+
+                    const url =
+                        `/Comparison/GetSessionMetadata?pdfIdV1=${v1}&pdfIdV2=${v2}`;
+
+                    console.log("Loading session metadata:", url);
+
+                    const res = await fetch(url);
+
+                    if (!res.ok) {
+                        throw new Error(
+                            `Session metadata request failed: ${res.status}`
+                        );
+                    }
+
+                    const data = await res.json();
+
+                    console.log("Session metadata:", data);
+
+                    if (!data.success) {
+                        throw new Error(
+                            data.message || "Failed to load session metadata."
+                        );
+                    }
+
+                    // Reset previous changes
+                    allChanges = [];
+                    filteredChanges = [];
+                    activeIndex = -1;
+
+                    // Process chapters
+                    (data.chapters || []).forEach(ch => {
+
+                        // .NET JSON properties
+                        const chapterNumber =
+                            ch.chapterNumber ?? ch.chapter_number;
+
+                        const v1Title =
+                            ch.v1Title ?? ch.v1_title ?? "";
+
+                        const v2Title =
+                            ch.v2Title ?? ch.v2_title ?? "";
+
+                        let response =
+                            ch.llmResponse ?? ch.llm_response;
+
+                        // llm_response is stored as JSON string in DB
+                        if (typeof response === "string") {
+
+                            try {
+                                response = JSON.parse(response);
+                            }
+                            catch (e) {
+
+                                console.error(
+                                    "Failed to parse LLM response for chapter:",
+                                    chapterNumber,
+                                    e
+                                );
+
+                                return;
+                            }
+                        }
+
+                        if (!response) {
+                            return;
+                        }
+
+                        const discrepancies =
+                            response.discrepancies || [];
+
+                        discrepancies.forEach(disc => {
+
+                            const changeType =
+                                (
+                                    disc.changeType ??
+                                    disc.change_type ??
+                                    "modified"
+                                ).toLowerCase();
+
+                            const v1Text =
+                                disc.v1Text ??
+                                disc.v1_text ??
+                                "";
+
+                            const v2Text =
+                                disc.v2Text ??
+                                disc.v2_text ??
+                                "";
+
+                            allChanges.push({
+
+                                ...disc,
+
+                                chapterNumber:
+                                    chapterNumber,
+
+                                chapterTitle:
+                                    v1Title ||
+                                    v2Title ||
+                                    `Chapter ${chapterNumber}`,
+
+                                oldText:
+                                    v1Text,
+
+                                newText:
+                                    v2Text,
+
+                                type:
+                                    changeType === "added"
+                                        ? "INSERTED"
+                                        : changeType === "deleted" ||
+                                            changeType === "removed"
+                                            ? "DELETED"
+                                            : "REPLACED"
+                            });
+                        });
+                    });
+
+                    filteredChanges = [...allChanges];
+
+                    console.log(
+                        "Total discrepancies:",
+                        allChanges.length
+                    );
+
+                    renderChangeCards(filteredChanges);
+
+                } catch (error) {
+
+                    console.error(
+                        "Session metadata loading error:",
+                        error
+                    );
+
+                    showErrorMessage(
+                        "Failed to load comparison details: " +
+                        error.message
+                    );
+                }
+            }
+
+            function updateSummaryChips() {
+                const mod = allChanges.filter(c => c.type === "REPLACED").length;
+                const add = allChanges.filter(c => c.type === "INSERTED").length;
+                const del = allChanges.filter(c => c.type === "DELETED").length;
+                document.getElementById("summaryChips").innerHTML =
+                    `<span class="summary-chip mod">${mod} Modified</span>` +
+                    `<span class="summary-chip add">${add} Added</span>` +
+                    `<span class="summary-chip del">${del} Removed</span>`;
+            }
+
+            function applyFilter(type) {
+                filteredChanges = type === "ALL" ? [...allChanges] : allChanges.filter(c => c.type === type);
+                activeIndex = -1;
+                renderChangeCards();
+            }
+
+            function esc(s) {
+                return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            }
+
+            function renderChangeCards() {
+                const list = document.getElementById("changesList");
+                if (!filteredChanges.length) {
+                    list.innerHTML =
+                        `<div style="padding:40px 24px;text-align:center;color:var(--muted);font-size:14px;">` +
+                        `No discrepancies found.<br><br>` +
+                        `<button type="button" class="btn btn-primary" id="emptyCompareBtn">Run AI Comparison</button>` +
+                        `</div>`;
+                    const emptyBtn = document.getElementById("emptyCompareBtn");
+                    if (emptyBtn) emptyBtn.onclick = () => document.getElementById("compareAllBtn").click();
+                    updateFooter();
+                    return;
+                }
+
+                const grouped = {};
+                filteredChanges.forEach((c, idx) => {
+                    const key = c.chapterNumber;
+                    if (!grouped[key]) grouped[key] = { title: c.chapterTitle, number: c.chapterNumber, items: [] };
+                    grouped[key].items.push({ ...c, globalIdx: idx });
+                });
+
+                let html = "";
+                Object.values(grouped).sort((a, b) => a.number - b.number).forEach(group => {
+                    html += `<div class="chapter-group"><div class="chapter-label">Chapter ${group.number}: ${esc(group.title)}</div>`;
+                    group.items.forEach(change => {
+                        let diffHtml = "";
+                        if (change.type === "REPLACED") {
+                            diffHtml = `<div class="diff-old">${esc(change.oldText)}</div><div class="diff-new">${esc(change.newText)}</div>`;
+                        } else if (change.type === "INSERTED") {
+                            diffHtml = `<div class="diff-new">+ ${esc(change.newText)}</div>`;
+                        } else {
+                            diffHtml = `<div class="diff-old">− ${esc(change.oldText)}</div>`;
+                        }
+                        html +=
+                            `<div class="change-card type-${change.type}" data-idx="${change.globalIdx}">` +
+                            `<div class="change-top">` +
+                            `<span class="change-number">#${change.globalIdx + 1}</span>` +
+                            `<span class="type-pill type-${change.type}">${change.type}</span>` +
+                            `</div>` +
+                            `<div class="change-topic">${esc(change.topic || "Change")}</div>` +
+                            `<div class="diff-box">${diffHtml}</div>` +
+                            `</div>`;
+                    });
+                    html += `</div>`;
+                });
+                list.innerHTML = html;
+                list.querySelectorAll(".change-card").forEach(card => {
+                    card.addEventListener("click", () => selectChange(Number(card.getAttribute("data-idx"))));
+                });
+                updateFooter();
+            }
+
+            async function selectChange(index) {
+                if (index < 0 || index >= filteredChanges.length) return;
+                activeIndex = index;
+                const change = filteredChanges[index];
+
+                document.querySelectorAll(".change-card").forEach(c => c.classList.remove("active"));
+                const active = document.querySelector(`.change-card[data-idx="${index}"]`);
+                if (active) {
+                    active.classList.add("active");
+                    active.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }
+                updateFooter();
+                clearHighlights();
+                isProgrammaticScroll = true;
+
+                const tasks = [];
+                if (change.oldText) tasks.push(highlightInPdfCanvas("v1", change.v1_location, change.oldText, "hl-v1"));
+                if (change.newText) tasks.push(highlightInPdfCanvas("v2", change.v2_location, change.newText, "hl-v2"));
+                await Promise.all(tasks);
+                setTimeout(() => { isProgrammaticScroll = false; }, 700);
+            }
+
+            async function highlightInPdfCanvas(paneKey, location, fallbackText, hlClass) {
+                const state = pdfState[paneKey];
+                if (!state.pdf) return;
+
+                // Strategy A: Backend coordinates (PyMuPDF)
+                if (location && location.rects && location.rects.length > 0) {
+                    const pageNum = location.page || 1;
+                    const pageData = state.pages[pageNum - 1];
+                    if (pageData) {
+                        location.rects.forEach(rect => {
+                            const el = document.createElement("div");
+                            el.className = `pdf-highlight ${hlClass} glow`;
+                            Object.assign(el.style, {
+                                left: `${rect.x0 * currentScale}px`,
+                                top: `${rect.y0 * currentScale}px`,
+                                width: `${Math.max((rect.x1 - rect.x0) * currentScale, 6)}px`,
+                                height: `${Math.max((rect.y1 - rect.y0) * currentScale, 6)}px`
+                            });
+                            pageData.wrapper.appendChild(el);
+                        });
+                        pageData.wrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+                        return;
+                    }
+                }
+
+                // Strategy B: Smart multi-word chunking fallback
+                if (!fallbackText) return;
+                const cleanText = fallbackText.replace(/\u00A0/g, " ").replace(/\s+/g, " ").trim();
+                if (!cleanText) return;
+
+                const words = cleanText.split(" ");
+                const chunks = [];
+                for (let i = 0; i < words.length; i += 3) {
+                    const chunk = words.slice(i, i + 4).join(" ").toLowerCase();
+                    if (chunk.length >= 3) chunks.push(chunk);
+                }
+
+                let firstMatchWrapper = null;
+
+                for (let p = 1; p <= state.pdf.numPages; p++) {
+                    const pd = state.pages[p - 1];
+                    if (!pd) continue;
+
+                    const tc = await pd.page.getTextContent();
+                    const items = tc.items || [];
+                    if (!items.length) continue;
+
+                    let stream = "";
+                    const map = [];
+                    items.forEach((item, ii) => {
+                        const s = item.str || "";
+                        if (!s) return;
+                        if (stream.length && !stream.endsWith(" ")) { stream += " "; map.push(null); }
+                        for (let k = 0; k < s.length; k++) { stream += s[k]; map.push({ ii }); }
+                    });
+
+                    const norm = stream.replace(/\u00A0/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+                    let pageMatched = false;
+
+                    chunks.forEach(chunk => {
+                        const idx = norm.indexOf(chunk);
+                        if (idx !== -1) {
+                            pageMatched = true;
+                            const touched = new Set();
+                            for (let i = idx; i < idx + chunk.length; i++) {
+                                if (map[i]) touched.add(map[i].ii);
+                            }
+
+                            const vp = pd.page.getViewport({ scale: currentScale });
+                            touched.forEach(ii => {
+                                const item = items[ii];
+                                if (!item) return;
+                                const tx = pdfjsLib.Util.transform(vp.transform, item.transform);
+                                const w = Math.max((item.width || 0) * currentScale, 6);
+                                const h = Math.max(Math.abs(tx[3]), 12);
+
+                                const el = document.createElement("div");
+                                el.className = `pdf-highlight ${hlClass} glow`;
+                                Object.assign(el.style, {
+                                    left: `${tx[4]}px`,
+                                    top: `${tx[5] - h}px`,
+                                    width: `${w}px`,
+                                    height: `${h}px`
+                                });
+                                pd.wrapper.appendChild(el);
+                            });
+                        }
+                    });
+
+                    if (pageMatched && !firstMatchWrapper) {
+                        firstMatchWrapper = pd.wrapper;
+                        break;
+                    }
+                }
+
+                if (firstMatchWrapper) {
+                    firstMatchWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }
+
+            function clearHighlights() {
+                document.querySelectorAll(".pdf-highlight").forEach(el => el.remove());
+            }
+
+            function updateFooter() {
+                const total = filteredChanges.length;
+                const cur = total === 0 || activeIndex < 0 ? 0 : activeIndex + 1;
+                document.getElementById("footerCount").textContent = `${cur} of ${total}`;
+                document.getElementById("prevBtn").disabled = activeIndex <= 0;
+                document.getElementById("nextBtn").disabled = activeIndex >= total - 1 || total === 0;
+                document.getElementById("progressFill").style.width = `${total ? (cur / total) * 100 : 0}%`;
+            }
+
+            async function loadPdf(key, containerId) {
+                const container = document.getElementById(containerId);
+                const url = pdfState[key].url;
+                try {
+                    const pdf = await pdfjsLib.getDocument({
+                        url,
+                        withCredentials: false,
+                        cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+                        cMapPacked: true
+                    }).promise;
+                    pdfState[key].pdf = pdf;
+                    await renderPages(key, containerId);
+                } catch (err) {
+                    console.error(`[PDF ${key}]`, err);
+                    container.innerHTML =
+                        `<div class="error-box">` +
+                        `<strong>Failed to load PDF</strong><br><br>` +
+                        `<div style="margin-bottom:8px;">URL:</div>` +
+                        `<code>${esc(url)}</code><br><br>` +
+                        `<div style="margin-bottom:8px;">Error:</div>` +
+                        `<code>${esc(err.message || String(err))}</code><br><br>` +
+                        `<div style="opacity:0.9; font-size:13px;">` +
+                        `Checks:<br>` +
+                        `1) .NET server running at <b>${esc(NET_STREAM_URL)}</b><br>` +
+                        `2) Open that URL once in browser and accept the dev certificate<br>` +
+                        `3) CORS allows your frontend origin<br>` +
+                        `4) Endpoint exists: <b>/Comparison/GetPdfStream/{id}</b>` +
+                        `</div></div>`;
+                }
+            }
+
+            async function renderPages(key, containerId) {
+                const container = document.getElementById(containerId);
+                const state = pdfState[key];
+                if (!state.pdf) return;
+                container.innerHTML = "";
+                state.pages = [];
+
+                for (let p = 1; p <= state.pdf.numPages; p++) {
+                    const page = await state.pdf.getPage(p);
+                    const vp = page.getViewport({ scale: currentScale });
+
+                    const wrapper = document.createElement("div");
+                    wrapper.className = "pdf-page";
+                    wrapper.dataset.page = p;
+                    wrapper.style.width = `${vp.width}px`;
+                    wrapper.style.height = `${vp.height}px`;
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = vp.width;
+                    canvas.height = vp.height;
+                    wrapper.appendChild(canvas);
+                    container.appendChild(wrapper);
+
+                    await page.render({
+                        canvasContext: canvas.getContext("2d"),
+                        viewport: vp
+                    }).promise;
+
+                    state.pages.push({ page, wrapper, canvas });
+                }
+            }
+
+            function setupSyncScroll() {
+                const p1 = document.getElementById("pdfPaneV1");
+                const p2 = document.getElementById("pdfPaneV2");
+                let active = null;
+                function sync(src, tgt) {
+                    if (isProgrammaticScroll || !document.getElementById("syncScroll").checked) return;
+                    const maxS = src.scrollHeight - src.clientHeight;
+                    const maxT = tgt.scrollHeight - tgt.clientHeight;
+                    if (maxS <= 0 || maxT <= 0) return;
+                    tgt.scrollTop = (src.scrollTop / maxS) * maxT;
+                }
+                p1.onmouseenter = () => active = p1;
+                p2.onmouseenter = () => active = p2;
+                p1.onscroll = () => { if (active === p1) sync(p1, p2); };
+                p2.onscroll = () => { if (active === p2) sync(p2, p1); };
+            }
+
+            function setupKeyboardNav() {
+                window.addEventListener("keydown", e => {
+                    if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+                    if (e.key === "ArrowDown" || e.key === "j") {
+                        e.preventDefault();
+                        selectChange(activeIndex < 0 ? 0 : activeIndex + 1);
+                    } else if (e.key === "ArrowUp" || e.key === "k") {
+                        e.preventDefault();
+                        selectChange(activeIndex - 1);
+                    }
+                });
+            }
+
+            function setupFilters() {
+                document.querySelectorAll(".filter-tab").forEach(tab => {
+                    tab.onclick = function () {
+                        document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
+                        this.classList.add("active");
+                        applyFilter(this.dataset.filter);
+                        if (filteredChanges.length) setTimeout(() => selectChange(0), 80);
+                    };
+                });
+            }
+
+            function setupZoomControls() {
+                const update = async (s) => {
+                    currentScale = Math.min(Math.max(s, 0.5), 2.5);
+                    document.getElementById("zoomLabel").textContent = `${Math.round(currentScale * 100)}%`;
+                    await Promise.all([
+                        renderPages("v1", "renderContainerV1"),
+                        renderPages("v2", "renderContainerV2")
+                    ]);
+                    if (activeIndex >= 0) selectChange(activeIndex);
+                };
+                document.getElementById("zoomInBtn").onclick = () => update(currentScale + 0.15);
+                document.getElementById("zoomOutBtn").onclick = () => update(currentScale - 0.15);
+                document.getElementById("zoomResetBtn").onclick = () => update(1.0);
+            }
+
+            function setupNavButtons() {
+                document.getElementById("nextBtn").onclick = () => selectChange(activeIndex + 1);
+                document.getElementById("prevBtn").onclick = () => selectChange(activeIndex - 1);
+            }
+
+            function showErrorMessage(msg) {
+                document.getElementById("errorWrapper").innerHTML =
+                    `<div class="error-message"><strong>Warning:</strong> ${esc(msg)}</div>`;
+            }
+    </script>
+</body>
+</html>
